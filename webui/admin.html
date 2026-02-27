@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Neuro-Lite Admin</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #222; color: #eee; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { color: #4CAF50; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab { padding: 10px 20px; background: #333; cursor: pointer; border-radius: 5px 5px 0 0; border: 1px solid #444; }
+        .tab.active { background: #444; border-bottom: 1px solid #444; }
+        .content { display: none; }
+        .content.active { display: block; }
+        .card { background: #333; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        input, textarea, select { width: 100%; padding: 10px; margin-bottom: 10px; background: #444; border: 1px solid #555; color: #fff; border-radius: 4px; box-sizing: border-box; }
+        button { background: #4CAF50; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; }
+        button:hover { background: #45a049; }
+        button.secondary { background: #2196F3; }
+        button.delete { background: #f44336; padding: 5px 10px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #555; font-size: 14px; }
+        th { background-color: #444; }
+        .result-item { background: #3a3a3a; padding: 10px; margin-bottom: 10px; border-radius: 4px; cursor: pointer; }
+        .result-item:hover { background: #4a4a4a; }
+        .result-title { font-weight: bold; color: #4CAF50; font-size: 14px; }
+        .result-link { font-size: 12px; color: #888; margin-bottom: 5px; display: block; }
+        .status { font-size: 12px; color: #aaa; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" style="color:#aaa; text-decoration:none;">← Back to Chat</a>
+        <h1>Knowledge Admin Center</h1>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('manual')">Manual Input</div>
+            <div class="tab" onclick="showTab('research')">Research (Web/AI)</div>
+            <div class="tab" onclick="showTab('db')">Existing Database</div>
+        </div>
+
+        <!-- Manual Input Tab -->
+        <div id="manual" class="content active">
+            <div class="card">
+                <h3>Add Knowledge Manually</h3>
+                <input type="text" id="m_q" placeholder="Question / Keyword">
+                <textarea id="m_a" rows="4" placeholder="Answer"></textarea>
+                <button onclick="addManual()">Save to Database</button>
+            </div>
+        </div>
+
+        <!-- Research Tab -->
+        <div id="research" class="content">
+            <div class="card">
+                <h3>Auto Research</h3>
+                <input type="text" id="search_q" placeholder="Topic to search or ask...">
+                <div style="display:flex; gap:10px;">
+                    <button class="secondary" onclick="doBrowse()">🌐 Browse Web</button>
+                    <button class="secondary" onclick="doAskAI()">🤖 Ask Premium AI</button>
+                </div>
+                <div id="research_results" style="margin-top:20px;"></div>
+            </div>
+        </div>
+
+        <!-- DB Tab -->
+        <div id="db" class="content">
+            <div class="card">
+                <h3>Stored Knowledge</h3>
+                <div id="table-container">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(id) {
+            document.querySelectorAll('.content').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.target.classList.add('active');
+            if(id === 'db') loadData();
+        }
+
+        async function loadData() {
+            const res = await fetch('/api/knowledge');
+            const json = await res.json();
+            const c = document.getElementById('table-container');
+            if(json.data.length === 0) { c.innerHTML = "<p>Empty.</p>"; return; }
+            let h = "<table><tr><th>Q</th><th>A</th><th>Source</th><th>Action</th></tr>";
+            json.data.forEach(i => {
+                h += `<tr><td>${i.question}</td><td>${i.answer}</td><td>${i.source}</td>
+                <td><button class="delete" onclick="delData(${i.id})">Delete</button></td></tr>`;
+            });
+            c.innerHTML = h + "</table>";
+        }
+
+        async function addManual() {
+            const q = document.getElementById('m_q').value;
+            const a = document.getElementById('m_a').value;
+            if(!q||!a) return alert("Fill all fields");
+            await fetch('/api/knowledge', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({question: q, answer: a, source: 'manual'})
+            });
+            alert("Saved!");
+            document.getElementById('m_q').value='';
+            document.getElementById('m_a').value='';
+        }
+
+        async function delData(id) {
+            if(!confirm("Delete?")) return;
+            await fetch(`/api/knowledge/${id}`, {method: 'DELETE'});
+            loadData();
+        }
+
+        async function doBrowse() {
+            const q = document.getElementById('search_q').value;
+            if(!q) return;
+            const container = document.getElementById('research_results');
+            container.innerHTML = "<div class='status'>Searching Web...</div>";
+            const res = await fetch('/api/browse', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({query: q})
+            });
+            const json = await res.json();
+            let h = "";
+            json.results.forEach(r => {
+                h += `<div class='result-item' onclick="useResult('${escapeHtml(r.title)}', '${escapeHtml(r.snippet)}')">
+                    <div class='result-title'>${r.title}</div>
+                    <a class='result-link' href="${r.link}" target="_blank">${r.link}</a>
+                    <div>${r.snippet}</div>
+                </div>`;
+            });
+            container.innerHTML = h || "<div class='status'>No results found.</div>";
+        }
+
+        async function doAskAI() {
+            const q = document.getElementById('search_q').value;
+            if(!q) return;
+            const container = document.getElementById('research_results');
+            container.innerHTML = "<div class='status'>Consulting Premium AI...</div>";
+            const res = await fetch('/api/ask_premium', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({query: q})
+            });
+            const json = await res.json();
+            container.innerHTML = `<div class='result-item' onclick="useResult('${escapeHtml(q)}', '${escapeHtml(json.answer)}')">
+                <div class='result-title'>AI Response for: ${q}</div>
+                <div style='white-space: pre-wrap; margin-top:10px;'>${json.answer}</div>
+            </div>`;
+        }
+
+        function useResult(title, text) {
+            document.getElementById('m_q').value = title;
+            document.getElementById('m_a').value = text;
+            showTab('manual');
+            document.querySelectorAll('.tab')[0].classList.add('active');
+            document.querySelectorAll('.tab')[1].classList.remove('active');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+        }
+
+        // Init
+        loadData();
+    </script>
+</body>
+</html>
