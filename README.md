@@ -1,6 +1,4 @@
-Berikut adalah file `README.md` yang telah ditulis ulang secara profesional untuk repositori GitHub Anda.
 
-```markdown
 <div align="center">
 
 # NEURO-LITE ECOSYSTEM
