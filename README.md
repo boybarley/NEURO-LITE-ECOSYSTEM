@@ -189,3 +189,66 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 Made with ☕ and engineering pragmatism by <a href="https://boybarley.com">boybarley</a>.
 </div>
 
+
+Masalah
+
+jika tidak bisa download model
+
+Proses upload harus dibagi menjadi 2 tahap: Kirim dari Mac -> Terima di Server.
+
+Ikuti langkah ini tepat:
+
+Langkah 1: Di Mac Anda (Kirim File)
+Buka Terminal baru di Mac Anda (bukan di server). Jalankan perintah ini untuk mengirim file dari Desktop Mac ke Server:
+
+bash
+
+scp ~/Desktop/qwen2.5-3b-instruct-q4_k_m.gguf boybarley@192.168.1.66:~
+(Masukkan password boybarley jika diminta). Tunggu hingga proses transfer 100% selesai).
+
+Langkah 2: Di Server (Pindahkan File)
+Setelah upload selesai, kembali ke terminal Server (yang menampilkan root@ai-server atau boybarley@...). Jalankan perintah ini untuk memindahkan file yang sudah terkirim tadi ke folder instalasi:
+
+bash
+
+# Pindahkan file dari home user ke folder model (butuh sudo)
+sudo mv ~/qwen2.5-3b-instruct-q4_k_m.gguf /opt/neuro-lite/models/
+
+# Pastikan konfigurasi sudah benar
+sudo tee /opt/neuro-lite/config.env > /dev/null << 'EOF'
+PROJECT_DIR="/opt/neuro-lite"
+MODEL_FILENAME="qwen2.5-3b-instruct-q4_k_m.gguf"
+MODEL_URL="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
+SWAP_SIZE="2G"
+DB_PATH="/opt/neuro-lite/data/knowledge.db"
+EOF
+
+# Jalankan instalasi lagi (akan skip download karena file sudah ada)
+sudo ./install.sh
+Ringkasan:
+
+scp di Mac: Mengirim file.
+mv di Server: Memindahkan file ke tempat yang benar.
+
+1. Start Service
+Jalankan perintah ini di server untuk memulai AI:
+
+bash
+
+sudo systemctl start neuro-lite
+2. Cek Status Service
+Pastikan service berjalan tanpa error:
+
+bash
+
+sudo systemctl status neuro-lite
+(Harus terlihat status: active (running)).
+
+3. Akses Aplikasi
+Buka browser di komputer/Mac Anda dan akses alamat IP server tersebut:
+
+👉 http://192.168.1.66:8000
+
+Anda akan melihat tampilan WebUI Neuro-Lite dan bisa mulai berinteraksi dengan AI.
+
+
