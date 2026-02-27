@@ -15,7 +15,7 @@
 
 </div>
 
----
+
 
 ## 📜 Overview
 
@@ -188,4 +188,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <div align="center">
 Made with ☕ and engineering pragmatism by <a href="https://boybarley.com">boybarley</a>.
 </div>
-```
+
