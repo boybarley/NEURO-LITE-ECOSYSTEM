@@ -1,1 +1,101 @@
-testing
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuro-Lite Interface</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f4f9; color: #333; margin: 0; display: flex; justify-content: center; height: 100vh; }
+        .container { width: 100%; max-width: 800px; display: flex; flex-direction: column; background: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        header { background: #2c3e50; color: white; padding: 1rem; text-align: center; }
+        #chat-box { flex: 1; padding: 1rem; overflow-y: auto; border-bottom: 1px solid #eee; }
+        .msg { margin-bottom: 1rem; padding: 0.5rem; border-radius: 5px; max-width: 80%; }
+        .user { background: #e1f5fe; margin-left: auto; text-align: right; }
+        .ai { background: #f0f0f0; margin-right: auto; border: 1px solid #ddd; }
+        .input-area { padding: 1rem; display: flex; background: #fafafa; }
+        input { flex: 1; padding: 0.8rem; border: 1px solid #ccc; border-radius: 4px; outline: none; }
+        button { margin-left: 0.5rem; padding: 0 1.5rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #2980b9; }
+        .typing { font-style: italic; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Neuro-Lite</h1>
+            <span>Speculative Empathic Engine v1.0</span>
+        </header>
+        <div id="chat-box"></div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Ask something..." onkeypress="if(event.key==='Enter')send()">
+            <button onclick="send()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+
+        function addMessage(text, sender) {
+            const div = document.createElement('div');
+            div.className = `msg ${sender}`;
+            div.innerHTML = text.replace(/\n/g, '<br>');
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function send() {
+            const text = userInput.value.trim();
+            if (!text) return;
+            
+            addMessage(text, 'user');
+            userInput.value = '';
+            
+            const aiDiv = document.createElement('div');
+            aiDiv.className = 'msg ai typing';
+            aiDiv.innerText = 'Thinking...';
+            chatBox.appendChild(aiDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: text})
+                });
+
+                if (!response.body) throw new Error("No stream");
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                aiDiv.innerText = '';
+                aiDiv.classList.remove('typing');
+
+                while (true) {
+                    const {value, done} = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    for (let line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.substring(6);
+                            if (data === '[DONE]') return;
+                            if (data === '[ERROR]') {
+                                aiDiv.innerText += " [Error]";
+                                return;
+                            }
+                            aiDiv.innerHTML += data;
+                            chatBox.scrollTop = chatBox.scrollHeight;
+                        }
+                    }
+                }
+
+            } catch (err) {
+                aiDiv.innerText = "Connection error.";
+                aiDiv.style.color = "red";
+            }
+        }
+    </script>
+</body>
+</html>
